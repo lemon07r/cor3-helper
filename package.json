@@ -1,10 +1,10 @@
 {
-  "name": "cor3-helper",
-  "version": "1.8.5",
+  "name": "cor3-helper-unified",
+  "version": "1.8.6",
   "private": true,
-  "description": "COR3 Helper Chrome Extension (Salta fork)",
+  "description": "COR3 Helper Unified (Firefox & Chrome MV3)",
   "cor3Fork": {
-    "label": "salta",
+    "label": "unified",
     "build": 1
   },
   "scripts": {

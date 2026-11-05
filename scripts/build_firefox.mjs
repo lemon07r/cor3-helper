@@ -17,8 +17,8 @@ fs.cpSync(src, dest, {recursive:true});
 const manifestFile = path.join(dest, 'manifest.json');
 const m = JSON.parse(fs.readFileSync(manifestFile,'utf8'));
 
-m.name = 'COR3 Helper Unified (Firefox Prototype)';
-m.description = 'Firefox adaptation of COR3 Helper, with opt-in automation.';
+m.name = 'COR3 Helper Unified';
+m.description = 'Firefox MV3 build of COR3 Helper Unified — safe auto-jobs, loadout optimizer, and market tracker.';
 m.permissions = (m.permissions || []).filter(x => x !== 'sidePanel');
 delete m.side_panel;
 delete m.devtools_page; // optional Chrome-only panel, not required for popup usability
