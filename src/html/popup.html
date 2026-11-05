@@ -268,8 +268,24 @@
         </div>
         <!-- Start/Stop Button -->
         <button class="auto-jobs-btn-start start" id="autoJobsStartBtn">▶ Start Auto Jobs</button>
-        <!-- Auto Finish All Jobs Toggle -->
+        <!-- Dry Run Mode Toggle -->
         <div class="auto-decrypt-row" style="margin-top:8px;">
+            <span class="decrypt-label" style="font-size:10px;">🧪 Dry Run (Safe Evaluation)</span>
+            <label class="alarm-toggle-switch">
+                <input type="checkbox" id="autoJobsDryRunToggle" checked>
+                <span class="slider-track"></span>
+            </label>
+        </div>
+        <!-- Cash Reserve Row -->
+        <div class="auto-decrypt-row" style="margin-top:4px;">
+            <span class="decrypt-label" style="font-size:10px;">🛡️ Cash Reserve</span>
+            <div style="display:flex;align-items:center;gap:4px;">
+                <input type="number" id="autoJobsCashReserveInput" value="7200" style="width:65px;background:var(--bg-input,#1e1e2e);border:1px solid var(--border,#313244);color:var(--text-primary,#cdd6f4);border-radius:4px;padding:2px 4px;font-size:10px;text-align:right;">
+                <span style="font-size:10px;color:var(--text-dim,#6c7086);">CR</span>
+            </div>
+        </div>
+        <!-- Auto Finish All Jobs Toggle -->
+        <div class="auto-decrypt-row" style="margin-top:4px;">
             <span class="decrypt-label" style="font-size:10px;">🔄 Auto Finish All Jobs</span>
             <label class="alarm-toggle-switch">
                 <input type="checkbox" id="autoFinishAllJobsToggle">

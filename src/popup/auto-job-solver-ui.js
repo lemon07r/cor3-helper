@@ -17,6 +17,8 @@ const autoJobsContentDark = document.getElementById('autoJobsContentDark');
 const autoJobsContentSoyuz = document.getElementById('autoJobsContentSoyuz');
 const autoJobsContentUsol = document.getElementById('autoJobsContentUsol');
 const autoJobsStartBtn = document.getElementById('autoJobsStartBtn');
+const autoJobsDryRunToggle = document.getElementById('autoJobsDryRunToggle');
+const autoJobsCashReserveInput = document.getElementById('autoJobsCashReserveInput');
 const autoJobsDebugToggle = document.getElementById('autoJobsDebugToggle');
 const autoJobsDebugConsole = document.getElementById('autoJobsDebugConsole');
 const debugTabJobs = document.getElementById('debugTabJobs');
@@ -588,10 +590,15 @@ autoJobsStartBtn.addEventListener('click', async () => {
         try {
             const tab = await getCor3Tab();
             if (tab) {
+                const isDryRun = autoJobsDryRunToggle ? autoJobsDryRunToggle.checked : true;
+                const reserve = autoJobsCashReserveInput ? (parseInt(autoJobsCashReserveInput.value, 10) || 7200) : 7200;
                 await chrome.tabs.sendMessage(tab.id, {
                     action: "startAutoJobs",
                     jobs: jobsToRun,
-                    settings: {}
+                    settings: {
+                        dryRun: isDryRun,
+                        cashReserve: reserve
+                    }
                 });
             }
         } catch (e) {
@@ -599,6 +606,27 @@ autoJobsStartBtn.addEventListener('click', async () => {
         }
     }
 });
+
+// Dry Run and Cash Reserve settings
+chrome.storage.sync.get(['autoJobsDryRun', 'autoJobsCashReserve'], (data) => {
+    if (autoJobsDryRunToggle) {
+        autoJobsDryRunToggle.checked = data.autoJobsDryRun !== false; // Default: true (safe)
+    }
+    if (autoJobsCashReserveInput) {
+        autoJobsCashReserveInput.value = data.autoJobsCashReserve ?? 7200;
+    }
+});
+if (autoJobsDryRunToggle) {
+    autoJobsDryRunToggle.addEventListener('change', () => {
+        chrome.storage.sync.set({ autoJobsDryRun: autoJobsDryRunToggle.checked });
+    });
+}
+if (autoJobsCashReserveInput) {
+    autoJobsCashReserveInput.addEventListener('change', () => {
+        const val = parseInt(autoJobsCashReserveInput.value, 10) || 7200;
+        chrome.storage.sync.set({ autoJobsCashReserve: val });
+    });
+}
 
 // Debug console toggle
 chrome.storage.sync.get('autoJobsDebugConsoleEnabled', (data) => {

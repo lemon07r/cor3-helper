@@ -1,13 +1,19 @@
-# COR3 Helper — Salta Fork
+# COR3 Helper Unified (Firefox & Chrome)
 
-A Chrome extension that enhances the [cor3.gg](https://cor3.gg) experience by monitoring markets, expeditions, daily ops, and providing timer alerts — all from a compact popup UI.
+A modern, Firefox-compatible and Chrome extension for [cor3.gg](https://cor3.gg) featuring fail-closed safe job eligibility checks, multi-combo loadout optimization, dry-run safety evaluation, and real-time market/expedition tracking.
 
-> **Personal fork:** This is [SaltApocalypse/cor3-helper](https://github.com/SaltApocalypse/cor3-helper), a self-maintained fork of [Femtoce11/cor3-helper](https://github.com/Femtoce11/cor3-helper). It is **not** an official upstream release.
->
-> - Fork releases: [SaltApocalypse/cor3-helper/releases](https://github.com/SaltApocalypse/cor3-helper/releases)
-> - Upstream project and original author: [Femtoce11/cor3-helper](https://github.com/Femtoce11/cor3-helper)
->
-> The extension's update checks point at this fork. Game-version data (`versions.json`) is mirrored from upstream and can also be synced manually with `npm run sync-versions`.
+> **Attribution & Lineage:**
+> - **Upstream Project & Original Author**: [Femtoce11/cor3-helper](https://github.com/Femtoce11/cor3-helper) (MIT License)
+> - **Baseline Fork**: [SaltApocalypse/cor3-helper](https://github.com/SaltApocalypse/cor3-helper) (`v1.8.5-salta.1`) — modern esbuild architecture, drone/warehouse/mailbox modules, and UI themes
+> - **Firefox MV3 Architecture Reference**: [3ncy/cor3-helper-ff](https://github.com/3ncy/cor3-helper-ff) (`v1.6.1`) — Firefox MV3 background script structure
+> - **Multi-Combo Solver Inspiration**: [Nightingale13/cor3-helper](https://github.com/Nightingale13/cor3-helper) — multi-candidate loadout evaluations
+> - **Unified Enhancements by @lemon07r**:
+>   - **Firefox MV3 Port**: Native `background.scripts` execution, Gecko ID `cor3-helper-unified@lr7.local`, feature-guarded `sidePanel` API, and CORS/CSP-safe origins.
+>   - **Fail-Closed Job Safety Engine**: `src/shared/job-eligibility.js` checking expiration buffers, cash reserves, intermediate transit hop hackability (e.g. S4L1 behind E1SCP), and Access Grant vs Acquisition semantics.
+>   - **Dry Run Safety Mode**: Non-destructive evaluation mode (enabled by default) to preview job eligibility before taking contracts.
+>   - **Loadout Purchase Advisor**: Separates achievable power with owned gear from cheapest missing catalog upgrades; enforces PSU wattage ceilings and resource demand.
+>   - **Security & Mozilla Review Compliance**: Cleaned all unsafe DOM interpolations to safe `replaceChildren` methods.
+>   - **Test Suite**: Automated Node.js unit tests (`npm test`) covering all safety and loadout scenarios.
 
 ## Affiliation & Disclaimer
 

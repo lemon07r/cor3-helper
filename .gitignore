@@ -1,5 +1,6 @@
 node_modules/
 dist/
+dist-firefox/
 RELEASE_NOTES.md
 cor3-ws-export*.json
 Task.md

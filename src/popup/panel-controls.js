@@ -151,6 +151,9 @@ if (popOutBtn) {
 }
 
 if (sidePanelBtn) {
+    if (!chrome?.sidePanel?.open) {
+        sidePanelBtn.style.display = 'none';
+    }
     sidePanelBtn.addEventListener('click', async () => {
         try {
             const tab = await getCor3Tab();

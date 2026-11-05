@@ -1,0 +1,4 @@
+Source: SaltApocalypse/cor3-helper
+Commit: 146a52d089b1735cb915aec3a6fcd1ef2a1ce182
+Release: v1.8.5-salta.1
+Other forks live outside work/; do not overwrite work/ wholesale from an older fork.

@@ -68,28 +68,28 @@ export async function applyHelperMode(helper, mode) {
 
         // Pinned Auto Refresh Timers
 
-        (document.getElementById('autoRefreshCore')).checked = !!toggles.autoRefresh.home_jobs ?? false;
-        (document.getElementById('autoRefreshDark')).checked = !!toggles.autoRefresh.dark_jobs ?? false;
-        (document.getElementById('autoRefreshSoyuz')).checked = !!toggles.autoRefresh.soyuz_jobs ?? false;
-        (document.getElementById('autoRefreshUsol')).checked = !!toggles.autoRefresh.usol_jobs ?? false;
+        (document.getElementById('autoRefreshCore')).checked = Boolean(toggles.autoRefresh?.home_jobs);
+        (document.getElementById('autoRefreshDark')).checked = Boolean(toggles.autoRefresh?.dark_jobs);
+        (document.getElementById('autoRefreshSoyuz')).checked = Boolean(toggles.autoRefresh?.soyuz_jobs);
+        (document.getElementById('autoRefreshUsol')).checked = Boolean(toggles.autoRefresh?.usol_jobs);
 
         loadPinnedState()
 
         // Auto Jobs and Auto Update Markets
 
-        (document.getElementById('autoJobSolverToggle')).checked = !!toggles.autoJobSolverEnabled ?? false;
-        (document.getElementById('autoJobSolverStatus')).textContent = !!toggles.autoJobSolverEnabled ? 'Active' : 'Off';
-        (document.getElementById('autoJobSolverStatus')).style.color = !!toggles.autoJobSolverEnabled ? 'var(--accent-green)' : 'var(--text-dim)';
-        (document.getElementById('autoUpdateMarketsToggle')).checked = !!toggles.autoUpdateMarkets ?? false;
-        (document.getElementById('autoUpdateMarketsStatus')).textContent = !!toggles.autoUpdateMarkets ? 'Active' : 'Off';
-        (document.getElementById('autoUpdateMarketsStatus')).style.color = !!toggles.autoUpdateMarkets ? 'var(--accent-green)' : 'var(--text-dim)';
+        (document.getElementById('autoJobSolverToggle')).checked = Boolean(toggles.autoJobSolverEnabled);
+        (document.getElementById('autoJobSolverStatus')).textContent = toggles.autoJobSolverEnabled ? 'Active' : 'Off';
+        (document.getElementById('autoJobSolverStatus')).style.color = toggles.autoJobSolverEnabled ? 'var(--accent-green)' : 'var(--text-dim)';
+        (document.getElementById('autoUpdateMarketsToggle')).checked = Boolean(toggles.autoUpdateMarkets);
+        (document.getElementById('autoUpdateMarketsStatus')).textContent = toggles.autoUpdateMarkets ? 'Active' : 'Off';
+        (document.getElementById('autoUpdateMarketsStatus')).style.color = toggles.autoUpdateMarkets ? 'var(--accent-green)' : 'var(--text-dim)';
 
-        (document.getElementById('autoJobSolverSection')).style.display = !!toggles.autoJobSolverEnabled ? '' : 'none';
+        (document.getElementById('autoJobSolverSection')).style.display = toggles.autoJobSolverEnabled ? '' : 'none';
 
-        (document.getElementById('autoFinishAllJobsToggle')).checked = !!toggles.autoFinishAllJobsEnabled ?? false;
-        (document.getElementById('autoJobsDebugToggle')).checked =  !!toggles.autoJobsDebugConsoleEnabled ?? false;
-        (document.getElementById('autoJobsDebugConsole')).style.display = !!toggles.autoJobsDebugConsoleEnabled ? '' : 'none';
-        if (!!toggles.autoJobsDebugConsoleEnabled) {
+        (document.getElementById('autoFinishAllJobsToggle')).checked = Boolean(toggles.autoFinishAllJobsEnabled);
+        (document.getElementById('autoJobsDebugToggle')).checked = Boolean(toggles.autoJobsDebugConsoleEnabled);
+        (document.getElementById('autoJobsDebugConsole')).style.display = toggles.autoJobsDebugConsoleEnabled ? '' : 'none';
+        if (toggles.autoJobsDebugConsoleEnabled) {
             renderDebugJobs();
             renderDebugLogs();
         }
@@ -98,19 +98,19 @@ export async function applyHelperMode(helper, mode) {
 
         // Auto Decisions and Auto Mercs
 
-        (document.getElementById('autoChooseCheckbox')).checked = !!toggles.decisionModifiers.autoChoose ?? false;
-        (document.getElementById('noWaitAutoChooseCheckbox')).checked = !!toggles.decisionModifiers.noWaitAutoChoose ?? false;
-        (document.getElementById('getRidOfVeteransToggle')).checked = !!toggles.decisionModifiers.getRidOfVeterans ?? false;
+        (document.getElementById('autoChooseCheckbox')).checked = Boolean(toggles.decisionModifiers?.autoChoose);
+        (document.getElementById('noWaitAutoChooseCheckbox')).checked = Boolean(toggles.decisionModifiers?.noWaitAutoChoose);
+        (document.getElementById('getRidOfVeteransToggle')).checked = Boolean(toggles.decisionModifiers?.getRidOfVeterans);
 
-        (document.getElementById('autoSendMercenaryToggle')).checked = !!toggles.autoSendMerc.enabled ?? false;
-        (document.getElementById('autoChooseMercToggle')).checked = !!toggles.autoSendMerc.autoChooseMerc ?? false;
-        (document.getElementById('autoChooseUsolFirstToggle')).checked = !!toggles.autoSendMerc.autoChooseUsolFirst ?? false;
-        (document.getElementById('ignoreEliteMercToggle')).checked = !!toggles.autoSendMerc.ignoreEliteMerc ?? false;
-        (document.getElementById('mercInsuranceToggle')).checked = !!toggles.autoSendMerc.hasInsurance ?? false;
-        (document.getElementById('applyMercCostLimiterToggle')).checked = !!toggles.autoSendMerc.applyMercCostLimiter ?? false;
-        (document.getElementById('maxMercCostInput')).value = toggles.autoSendMerc.maxMercCost ?? 15000;
-        (document.getElementById('mercCostDisplayValue')).textContent = toggles.autoSendMerc.maxMercCost ?? 15000;
-        (document.getElementById('autoSellCheapestToggle')).checked = !!toggles.autoSellCheapest ?? false;
+        (document.getElementById('autoSendMercenaryToggle')).checked = Boolean(toggles.autoSendMerc?.enabled);
+        (document.getElementById('autoChooseMercToggle')).checked = Boolean(toggles.autoSendMerc?.autoChooseMerc);
+        (document.getElementById('autoChooseUsolFirstToggle')).checked = Boolean(toggles.autoSendMerc?.autoChooseUsolFirst);
+        (document.getElementById('ignoreEliteMercToggle')).checked = Boolean(toggles.autoSendMerc?.ignoreEliteMerc);
+        (document.getElementById('mercInsuranceToggle')).checked = Boolean(toggles.autoSendMerc?.hasInsurance);
+        (document.getElementById('applyMercCostLimiterToggle')).checked = Boolean(toggles.autoSendMerc?.applyMercCostLimiter);
+        (document.getElementById('maxMercCostInput')).value = toggles.autoSendMerc?.maxMercCost ?? 15000;
+        (document.getElementById('mercCostDisplayValue')).textContent = toggles.autoSendMerc?.maxMercCost ?? 15000;
+        (document.getElementById('autoSellCheapestToggle')).checked = Boolean(toggles.autoSellCheapest);
 
     }
 

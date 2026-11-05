@@ -5,7 +5,8 @@ import { humanDelay } from '../shared/ws-utils.js';
 import { friendlyError } from '../shared/error-map.js';
 import { getServerTypeName } from '../shared/loadout-resolver.js';
 import { state, serverMap, sendCmd, delay, log, DARK_MARKET_SERVER_ID, SOYUZ_MARKET_SERVER_ID, USOL_MARKET_SERVER_ID, SERVER_PATH_MAP } from './state.js';
-import { getServerPriority, getJobTypePriority, isJobBugged, updateTracker, saveCompletedResultsIncremental, signalDone, fetchMapData, checkPathMaintenance, invalidateLoadoutCache, ensureLoadoutForJob } from './helpers.js';
+import { getServerPriority, getJobTypePriority, isJobBugged, updateTracker, saveCompletedResultsIncremental, signalDone, fetchMapData, checkPathMaintenance, invalidateLoadoutCache, ensureLoadoutForJob, getLoadoutData } from './helpers.js';
+import { checkJobEligibility } from '../shared/job-eligibility.js';
 import { stepSetEndpoint, stepCompleteJob } from './steps.js';
 import { solveJob } from './solvers.js';
 import { waitForIceWallStuckClear, waitForMinigameWindow } from '../shared/hack-utils.js';
@@ -199,6 +200,52 @@ export async function processQueue() {
             }
         }
 
+        // Safe fail-closed eligibility pre-check (handles Dry Run, Power, Access Grant, Cash Reserve, Expiration)
+        var currentLoadout = null;
+        try {
+            currentLoadout = await getLoadoutData(false);
+        } catch (lErr) {
+            log('Could not retrieve loadout for eligibility check: ' + lErr.message, 'warn');
+        }
+
+        var isDryRun = !!(state.solverSettings && state.solverSettings.dryRun);
+        var cashReserve = (state.solverSettings && typeof state.solverSettings.cashReserve === 'number')
+            ? state.solverSettings.cashReserve
+            : 7200;
+
+        var eligibility = checkJobEligibility(job, {
+            loadout: currentLoadout,
+            serverMap: serverMap,
+            allowTaken: !!job.alreadyTaken,
+            playerState: {
+                credits: state.playerCredits || Infinity,
+                cashReserve: cashReserve,
+                activeAccesses: state.activeAccesses || {}
+            },
+            currentTime: Date.now(),
+            config: {
+                dryRun: isDryRun,
+                cashReserve: cashReserve,
+                timeBufferMs: 60000
+            }
+        });
+
+        if (isDryRun) {
+            job.status = eligibility.status === 'eligible' ? 'open' : 'skipped';
+            job.error = '[DRY RUN] ' + eligibility.status.toUpperCase() + ': ' + eligibility.reasons.join('; ');
+            log('[DRY RUN] ' + (job.name || job.type) + ': ' + eligibility.status.toUpperCase() + ' — ' + eligibility.reasons.join('; '), eligibility.status === 'eligible' ? 'success' : 'warn');
+            updateTracker();
+            continue;
+        }
+
+        if (eligibility.status !== 'eligible') {
+            job.status = 'skipped';
+            job.error = eligibility.reasons.join('; ');
+            log('⚠️ Skipping ineligible job (' + eligibility.status + '): ' + (job.name || job.type) + ' — ' + job.error, 'warn');
+            updateTracker();
+            continue;
+        }
+
         job.status = 'running';
         state._currentJobRef = job;
         updateTracker();
@@ -386,7 +433,7 @@ export async function processQueue() {
 
     var depositStr = totalDeposit > 0 ? ' (deposits: -' + totalDeposit + ')' : '';
     var buggedStr = buggedCount > 0 ? ', ' + buggedCount + ' bugged' : '';
-    var skippedStr = skippedCount > 0 ? ', ' + skippedCount + ' skipped (maintenance)' : '';
+    var skippedStr = skippedCount > 0 ? ', ' + skippedCount + ' skipped' : '';
     log('=== Auto Jobs Complete: ' + doneCount + ' done, ' + failedCount + ' failed' + buggedStr + skippedStr + '. Net: 💰' + totalCredits + depositStr + ' ⭐' + totalRep + ' 🏅' + totalRenown + ' ===', 'success');
 
     var completedResults = state.jobQueue.map(function (j) {

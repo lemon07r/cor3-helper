@@ -31,7 +31,7 @@ function reachLogMsg(msg, color) {
 }
 
 function clearReachLog() {
-    if (reachLog) { reachLog.innerHTML = ''; reachLog.style.display = 'none'; }
+    if (reachLog) { reachLog.replaceChildren(); reachLog.style.display = 'none'; }
 }
 
 if (reachPullBtn) {
@@ -70,7 +70,7 @@ if (reachPullBtn) {
 
 function populateReachSelect(servers) {
     if (!reachSelect) return;
-    reachSelect.innerHTML = '';
+    reachSelect.replaceChildren();
     const defaultOpt = document.createElement('option');
     defaultOpt.value = '';
     defaultOpt.textContent = '\u2014 select server \u2014';

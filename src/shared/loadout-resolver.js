@@ -177,44 +177,261 @@ export function findDecryptSoftwareForFileType(allSoftware, fileType) {
     return candidates;
 }
 
+// Compare current and target hardware configurations
+export function hardwareMatches(currentHw, targetHw) {
+    if (!currentHw || !targetHw) return false;
+    var categories = ['cpu', 'gpu', 'ram', 'psu'];
+    for (var i = 0; i < categories.length; i++) {
+        var current = currentHw[categories[i]];
+        var target = targetHw[categories[i]];
+        if (!current || !target || current.id !== target.id) return false;
+    }
+    return true;
+}
+
 // Find the best hardware set from owned hardware that maximizes power
 // while still booting with the given software set.
 export function findBestHardware(loadout, softwareIds) {
+    return findBestHardwareForAbility(loadout, softwareIds, null);
+}
+
+// Find the best hardware set from owned hardware maximizing a specific ability power (or total power)
+export function findBestHardwareForAbility(loadout, softwareIds, abilityType) {
     var owned = loadout.ownedHardware || [];
     var byCat = { CPU: [], GPU: [], RAM: [], PSU: [] };
     for (var i = 0; i < owned.length; i++) {
         var cat = (owned[i].category || '').toUpperCase();
         if (byCat[cat]) byCat[cat].push(owned[i]);
     }
+    var eq = loadout.equippedHardware || {};
+    for (var k in eq) {
+        var eqItem = eq[k];
+        if (eqItem && eqItem.category) {
+            var c = eqItem.category.toUpperCase();
+            if (byCat[c] && !byCat[c].some(function (x) { return x.id === eqItem.id; })) {
+                byCat[c].push(eqItem);
+            }
+        }
+    }
     if (byCat.CPU.length === 0 || byCat.GPU.length === 0 || byCat.RAM.length === 0 || byCat.PSU.length === 0) return null;
+
     var bestHw = null;
     var bestPower = -1;
     for (var ci = 0; ci < byCat.CPU.length; ci++) {
         for (var gi = 0; gi < byCat.GPU.length; gi++) {
-            var psuNeed = (byCat.CPU[ci].specs.cpuConsuming || 0) + (byCat.GPU[gi].specs.gpuConsuming || 0);
+            var psuNeed = (byCat.CPU[ci].specs?.cpuConsuming || 0) + (byCat.GPU[gi].specs?.gpuConsuming || 0);
             for (var pi = 0; pi < byCat.PSU.length; pi++) {
-                if ((byCat.PSU[pi].specs.psuPower || 0) < psuNeed) continue;
+                if ((byCat.PSU[pi].specs?.psuPower || 0) < psuNeed) continue;
                 for (var rmi = 0; rmi < byCat.RAM.length; rmi++) {
                     var testHw = { cpu: byCat.CPU[ci], gpu: byCat.GPU[gi], ram: byCat.RAM[rmi], psu: byCat.PSU[pi] };
                     var testLoadout = JSON.parse(JSON.stringify(loadout));
                     testLoadout.equippedHardware = testHw;
                     var analysis = calculateAnalysis(testLoadout, softwareIds);
                     if (!analysis.canBoot) continue;
-                    var totalPower = 0;
-                    for (var swId in analysis.swAnalysis) {
-                        var ab = analysis.swAnalysis[swId].abilities;
-                        for (var ai = 0; ai < ab.length; ai++) totalPower += ab[ai].computedPower;
+
+                    var power = 0;
+                    if (abilityType) {
+                        for (var swId in analysis.swAnalysis) {
+                            var ab = analysis.swAnalysis[swId].abilities;
+                            for (var ai = 0; ai < ab.length; ai++) {
+                                if (ab[ai].type === abilityType) {
+                                    power = Math.max(power, ab[ai].computedPower);
+                                }
+                            }
+                        }
+                    } else {
+                        for (var swId2 in analysis.swAnalysis) {
+                            var ab2 = analysis.swAnalysis[swId2].abilities;
+                            for (var ai2 = 0; ai2 < ab2.length; ai2++) power += ab2[ai2].computedPower;
+                        }
                     }
-                    if (totalPower > bestPower) {
-                        bestPower = totalPower;
+                    if (power > bestPower) {
+                        bestPower = power;
                         bestHw = testHw;
                     }
                 }
-                break;
             }
         }
     }
     return bestHw;
+}
+
+// Find the software and owned hardware combination with highest achievable power for abilityType
+export function findBestSoftwareLoadout(loadout, candidates, abilityType) {
+    if (!candidates || candidates.length === 0) return null;
+    var best = null;
+    var equippedSw = loadout.equippedSoftware || [];
+
+    for (var i = 0; i < candidates.length; i++) {
+        var candidate = candidates[i];
+        var softwareIds = [candidate.sw.id];
+        var currentAnalysis = calculateAnalysis(loadout, softwareIds);
+        var hardware = findBestHardwareForAbility(loadout, softwareIds, abilityType);
+        if (!hardware) {
+            if (!currentAnalysis.canBoot) continue;
+            hardware = loadout.equippedHardware || {};
+        }
+
+        var testLoadout = JSON.parse(JSON.stringify(loadout));
+        testLoadout.equippedHardware = hardware;
+        var analysis = calculateAnalysis(testLoadout, softwareIds);
+        if (!analysis.canBoot) continue;
+
+        var swAnalysis = analysis.swAnalysis[candidate.sw.id];
+        if (!swAnalysis) continue;
+        var ability = typeof candidate.specIndex === 'number' ? swAnalysis.abilities[candidate.specIndex] : null;
+        if (!ability || ability.type !== abilityType) {
+            ability = null;
+            for (var ai = 0; ai < swAnalysis.abilities.length; ai++) {
+                if (swAnalysis.abilities[ai].type === abilityType) {
+                    ability = swAnalysis.abilities[ai];
+                    break;
+                }
+            }
+        }
+        if (!ability) continue;
+
+        if (currentAnalysis.canBoot) {
+            var currentSwAnalysis = currentAnalysis.swAnalysis[candidate.sw.id];
+            var currentAbility = currentSwAnalysis && typeof candidate.specIndex === 'number' ? currentSwAnalysis.abilities[candidate.specIndex] : null;
+            if (currentAbility && currentAbility.type === abilityType && currentAbility.computedPower === ability.computedPower) {
+                hardware = loadout.equippedHardware || {};
+            }
+        }
+
+        var isEquipped = equippedSw.some(function (sw) { return sw.id === candidate.sw.id; });
+        if (!best || ability.computedPower > best.power ||
+            (ability.computedPower === best.power && isEquipped && !best.isEquipped)) {
+            best = {
+                sw: candidate.sw,
+                spec: candidate.spec || ability,
+                hardware: hardware,
+                power: ability.computedPower,
+                isEquipped: isEquipped
+            };
+        }
+    }
+    return best;
+}
+
+// Find cheapest missing hardware from market catalog that would allow meeting targetPower
+export function findCheapestMissingHardware(loadout, candidates, abilityType, targetPower, catalogHardware) {
+    if (!catalogHardware || catalogHardware.length === 0 || !candidates || candidates.length === 0) {
+        return null;
+    }
+    var viablePurchases = [];
+    var ownedIds = new Set((loadout.ownedHardware || []).map(function (h) { return h.id; }));
+    if (loadout.equippedHardware) {
+        for (var k in loadout.equippedHardware) {
+            if (loadout.equippedHardware[k]?.id) ownedIds.add(loadout.equippedHardware[k].id);
+        }
+    }
+
+    for (var i = 0; i < catalogHardware.length; i++) {
+        var item = catalogHardware[i];
+        if (ownedIds.has(item.id)) continue;
+
+        var hypLoadout = JSON.parse(JSON.stringify(loadout));
+        hypLoadout.ownedHardware = (hypLoadout.ownedHardware || []).concat([item]);
+        var best = findBestSoftwareLoadout(hypLoadout, candidates, abilityType);
+        if (best && best.power >= targetPower) {
+            viablePurchases.push({
+                id: item.id,
+                name: item.name,
+                category: item.category,
+                price: item.price || item.cost || 0,
+                projectedPower: best.power,
+                softwareName: best.sw?.name
+            });
+        }
+    }
+    viablePurchases.sort(function (a, b) { return a.price - b.price; });
+    return viablePurchases.length > 0 ? viablePurchases : null;
+}
+
+// Comprehensive loadout requirement resolver: separates 'achievableWithOwned' and 'cheapestMissingPurchases'
+export function resolveLoadoutRequirement(loadout, options) {
+    var abilityType = options.abilityType || 'HACK';
+    var targetPower = options.targetPower || 0;
+    var serverTypeName = options.serverTypeName || null;
+    var fileType = options.fileType || null;
+    var allSw = options.softwareList || loadout.ownedSoftware || [];
+    var catalogHardware = options.catalogHardware || null;
+
+    var candidates = [];
+    if (abilityType === 'HACK') {
+        candidates = findHackSoftwareForServerType(allSw, serverTypeName);
+    } else if (abilityType === 'DECRYPT') {
+        candidates = findDecryptSoftwareForFileType(allSw, fileType);
+    } else if (abilityType === 'SEARCH') {
+        candidates = findSearchSoftwareForServerType(allSw, serverTypeName);
+    }
+
+    if (candidates.length === 0) {
+        var missingType = serverTypeName || fileType || abilityType;
+        return {
+            achievableWithOwned: {
+                meetsTarget: false,
+                power: 0,
+                software: null,
+                hardware: null,
+                canBoot: false,
+                isCurrent: false,
+                reason: 'No owned ' + abilityType + ' software available for ' + missingType
+            },
+            cheapestMissingPurchases: null,
+            reason: 'Missing owned ' + abilityType + ' software for ' + missingType
+        };
+    }
+
+    var curHw = loadout.equippedHardware || {};
+    var curAnalysis = calculateAnalysis(loadout, [candidates[0].sw.id]);
+    var psuFailed = false;
+    if (curHw.psu && curAnalysis.demand && (curAnalysis.supply?.psu_power || 0) < curAnalysis.demand.psu_total) {
+        psuFailed = true;
+    }
+
+    var best = findBestSoftwareLoadout(loadout, candidates, abilityType);
+    if (!best) {
+        var failReason = psuFailed
+            ? 'Candidate combination reaches power requirement theoretically but fails resource/PSU boot check'
+            : 'Owned hardware cannot boot compatible ' + abilityType + ' software';
+        return {
+            achievableWithOwned: {
+                meetsTarget: false,
+                power: 0,
+                software: candidates[0].sw,
+                hardware: null,
+                canBoot: false,
+                isCurrent: false,
+                reason: failReason
+            },
+            cheapestMissingPurchases: catalogHardware ? findCheapestMissingHardware(loadout, candidates, abilityType, targetPower, catalogHardware) : null,
+            reason: failReason
+        };
+    }
+
+    var meets = best.power >= targetPower;
+    var isCurrent = best.isEquipped && hardwareMatches(loadout.equippedHardware, best.hardware);
+    var reason = meets
+        ? 'Target ' + abilityType + ' power ' + targetPower + ' is achievable with owned gear (' + best.sw.name + ': ' + best.power + ')'
+        : 'Best achievable ' + abilityType + ' power with owned gear is ' + best.power + ', below required ' + targetPower;
+
+    return {
+        achievableWithOwned: {
+            meetsTarget: meets,
+            power: best.power,
+            software: best.sw,
+            hardware: best.hardware,
+            canBoot: true,
+            isCurrent: isCurrent,
+            reason: reason
+        },
+        cheapestMissingPurchases: (!meets && catalogHardware)
+            ? findCheapestMissingHardware(loadout, candidates, abilityType, targetPower, catalogHardware)
+            : null,
+        reason: reason
+    };
 }
 
 // Find the lowest-priority equipped software that can be removed (not the protected one)

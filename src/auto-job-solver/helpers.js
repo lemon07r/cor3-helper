@@ -4,7 +4,7 @@ import { MARKET_DISPLAY_NAMES, JOB_TYPE_PRIORITY, LOG_JOB_TYPES, getMarketNameBy
 import { humanDelay, safeTimeout, safeClearTimeout } from '../shared/ws-utils.js';
 import { formatMinigameLockError, ensureDecryptSolverEnabled, ensureIceWallSolverEnabled, ensureSimpleDecryptSolverEnabled } from '../shared/hack-utils.js';
 import { friendlyError } from '../shared/error-map.js';
-import { calculateAnalysis, findHackSoftwareForServerType, findDecryptSoftwareForFileType, findBestHardware, findRemovableSoftware, getServerTypeName } from '../shared/loadout-resolver.js';
+import { calculateAnalysis, findHackSoftwareForServerType, findDecryptSoftwareForFileType, findBestHardware, findBestSoftwareLoadout, hardwareMatches, findRemovableSoftware, getServerTypeName } from '../shared/loadout-resolver.js';
 import { state, serverMap, sendCmd, delay, waitForEvent, log, SERVER_PRIORITY, SERVER_PATH_MAP } from './state.js';
 
 // ---- Priority helpers ----
@@ -269,84 +269,30 @@ export async function ensureLoadoutForJob(job) {
         return true;
     }
 
-    var bestHack = hackCandidates[0];
+    var bestHack = findBestSoftwareLoadout(loadout, hackCandidates, 'HACK');
+    if (!bestHack) {
+        log('Loadout: no bootable hack software available for ' + serverTypeName, 'warn');
+        return false;
+    }
+    log('Loadout: found ' + hackCandidates.length + ' hack candidate(s) for ' + serverTypeName + ' — best: ' + bestHack.sw.name + ' (power ' + bestHack.power + '/' + (bestHack.spec?.power ? bestHack.spec.power[1] : '?') + ')');
+
     var targetSwIds = [bestHack.sw.id];
     var currentHw = loadout.equippedHardware || {};
-    var analysis = calculateAnalysis(loadout, targetSwIds);
-    var targetHw = currentHw;
+    var targetHw = bestHack.hardware || currentHw;
 
-    var alreadyBest = equippedSwIds.length === 1 && equippedSwIds[0] === bestHack.sw.id;
+    var alreadyBest = equippedSwIds.length === 1 && equippedSwIds[0] === bestHack.sw.id &&
+        hardwareMatches(currentHw, targetHw);
     if (alreadyBest) {
-        log('Loadout: best HACK software "' + bestHack.sw.name + '" already equipped alone');
-    }
-
-    if (!analysis.canBoot) {
-        log('Loadout: current hardware cannot boot hack software — finding compatible hardware');
-        var betterHw = findBestHardware(loadout, targetSwIds);
-        if (betterHw) {
-            targetHw = betterHw;
-        } else {
-            log('Loadout: cannot boot hack software — skipping loadout change', 'warn');
-            return true;
-        }
-    }
-
-    var checkLoadout = JSON.parse(JSON.stringify(loadout));
-    checkLoadout.equippedHardware = targetHw;
-    var checkAnalysis = calculateAnalysis(checkLoadout, targetSwIds);
-    var computedHackPower = 0;
-    var hackSa = checkAnalysis.swAnalysis[bestHack.sw.id];
-    if (hackSa) {
-        for (var ai = 0; ai < hackSa.abilities.length; ai++) {
-            if (hackSa.abilities[ai].type === 'HACK') {
-                computedHackPower = hackSa.abilities[ai].computedPower;
-                break;
-            }
-        }
-    }
-    if (serverDefenceRate > 0) {
-        log('Loadout: hack power comparison — hackPower: ' + computedHackPower + ' vs serverDefenceRate: ' + serverDefenceRate + (computedHackPower >= serverDefenceRate ? ' ✓' : ' ✗ INSUFFICIENT'));
+        log('Loadout: best HACK loadout already equipped (' + bestHack.sw.name + ', power ' + bestHack.power + ')');
     } else {
-        log('Loadout: computed hack power: ' + computedHackPower + ' (serverDefenceRate unknown)');
-    }
-
-    if (serverDefenceRate > 0 && computedHackPower < serverDefenceRate) {
-        log('Loadout: hack power insufficient — trying hardware upgrade to boost power');
-        var hwUpgrade = findBestHardware(loadout, targetSwIds);
-        if (hwUpgrade) {
-            var upgradeLoadout = JSON.parse(JSON.stringify(loadout));
-            upgradeLoadout.equippedHardware = hwUpgrade;
-            var upgradeAnalysis = calculateAnalysis(upgradeLoadout, targetSwIds);
-            var upgradedPower = 0;
-            var upgradeSa = upgradeAnalysis.swAnalysis[bestHack.sw.id];
-            if (upgradeSa) {
-                for (var uai = 0; uai < upgradeSa.abilities.length; uai++) {
-                    if (upgradeSa.abilities[uai].type === 'HACK') {
-                        upgradedPower = upgradeSa.abilities[uai].computedPower;
-                        break;
-                    }
-                }
-            }
-            if (upgradedPower > computedHackPower) {
-                targetHw = hwUpgrade;
-                computedHackPower = upgradedPower;
-                log('Loadout: hardware upgrade found — hack power: ' + upgradedPower + ' vs serverDefenceRate: ' + serverDefenceRate + (upgradedPower >= serverDefenceRate ? ' ✓' : ' ✗ still insufficient'));
-                if (upgradedPower < serverDefenceRate) {
-                    log('Loadout: cannot reach required hack power (' + serverDefenceRate + ') — best achievable: ' + upgradedPower, 'error');
-                }
-            } else {
-                log('Loadout: no better hardware available — best hack power: ' + computedHackPower, 'warn');
-            }
-        } else {
-            log('Loadout: no hardware upgrade available', 'warn');
-        }
-    }
-
-    if (!alreadyBest || targetHw !== currentHw) {
-        log('Loadout: equipping HACK-only software "' + bestHack.sw.name + '" (power ' + (bestHack.spec.power || []).join('-') + ') for ' + serverTypeName);
+        log('Loadout: equipping HACK software "' + bestHack.sw.name + '" (power ' + bestHack.power + ') for ' + serverTypeName);
         await applyLoadoutChange(loadout, targetHw, targetSwIds);
     }
-    log('Loadout: pre-check complete for "' + (job.type || job.name || '?') + '"');
+
+    if (serverDefenceRate > 0) {
+        log('Loadout: hack power comparison — hackPower: ' + bestHack.power + ' vs serverDefenceRate: ' + serverDefenceRate + (bestHack.power >= serverDefenceRate ? ' ✓' : ' ✗ INSUFFICIENT'));
+        return bestHack.power >= serverDefenceRate;
+    }
     return true;
 }
 
@@ -384,29 +330,25 @@ export async function ensureDecryptOnlyLoadout(job) {
         return;
     }
 
-    var bestDecrypt = decryptCandidates[0];
-    var equippedSwIds = (loadout.equippedSoftware || []).map(function (s) { return s.id; });
-    if (equippedSwIds.length === 1 && equippedSwIds[0] === bestDecrypt.sw.id) {
-        log('Loadout: best DECRYPT software "' + bestDecrypt.sw.name + '" already equipped alone');
+    var bestDecrypt = findBestSoftwareLoadout(loadout, decryptCandidates, 'DECRYPT');
+    if (!bestDecrypt) {
+        log('Loadout: no bootable decrypt software available for ' + fileType, 'warn');
         return;
     }
 
+    var equippedSwIds = (loadout.equippedSoftware || []).map(function (s) { return s.id; });
     var targetSwIds = [bestDecrypt.sw.id];
     var currentHw = loadout.equippedHardware || {};
-    var analysis = calculateAnalysis(loadout, targetSwIds);
-    var targetHw = currentHw;
-    if (!analysis.canBoot) {
-        log('Loadout: current hardware cannot boot decrypt software — finding compatible hardware');
-        var betterHw = findBestHardware(loadout, targetSwIds);
-        if (betterHw) {
-            targetHw = betterHw;
-        } else {
-            log('Loadout: cannot boot decrypt software for ' + fileType + ' — insufficient resources', 'warn');
-            return;
-        }
+    var targetHw = bestDecrypt.hardware || currentHw;
+
+    var alreadyBest = equippedSwIds.length === 1 && equippedSwIds[0] === bestDecrypt.sw.id &&
+        hardwareMatches(currentHw, targetHw);
+    if (alreadyBest) {
+        log('Loadout: best DECRYPT loadout already equipped (' + bestDecrypt.sw.name + ', power ' + bestDecrypt.power + ')');
+        return;
     }
 
-    log('Loadout: equipping DECRYPT-only software "' + bestDecrypt.sw.name + '" (power ' + (bestDecrypt.spec.power || []).join('-') + ') for ' + fileType);
+    log('Loadout: equipping DECRYPT software "' + bestDecrypt.sw.name + '" (power ' + bestDecrypt.power + ') for ' + fileType);
     await applyLoadoutChange(loadout, targetHw, targetSwIds);
 }
 

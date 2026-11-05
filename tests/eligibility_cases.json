@@ -1,0 +1,14 @@
+[
+  {"id":"locked-acquisition","expected":"ineligible","description":"S4L1 Access Acquisition behind E1SCP, current Hack 8 vs required 12, no valid alternate path"},
+  {"id":"grant-later-login","expected":"manual-review","description":"Access Grant contract on target, grant only created upon signing: do not incorrectly require pre-sign login; inspect other cost/capability guards"},
+  {"id":"decrypt-low","expected":"ineligible","description":"Decrypt 15 needed, best achievable with owned hardware and Cypher+ is 11"},
+  {"id":"decrypt-owned-upgrade","expected":"eligible","description":"Decrypt 15 needed and owned bootable CPU/RAM/software combo supports power 15 after free loadout swap"},
+  {"id":"missing-owned-component","expected":"ineligible","description":"Recommended hypothetical hardware not owned; current best loadout cannot meet target"},
+  {"id":"server-maintenance","expected":"ineligible","description":"Target or only connecting path in maintenance; no alternate path"},
+  {"id":"unknown-response","expected":"unknown","description":"Malformed, missing, or stale server/job info must not sign"},
+  {"id":"expires-too-soon","expected":"ineligible","description":"Job expires before estimated completion with configured buffer"},
+  {"id":"reserve-protected","expected":"ineligible","description":"Signing pledge would reduce credits below configured cash reserve"},
+  {"id":"already-signed","expected":"ineligible","description":"Duplicate process/retry of same accepted job should not sign it twice"},
+  {"id":"insufficient-psu","expected":"ineligible","description":"Candidate combination reaches power requirement theoretically but fails resource/PSU boot check"},
+  {"id":"affordable-safe-job","expected":"eligible","description":"Reachable job with confirmed permission, owned bootable loadout, sufficient funds and generous deadline"}
+]
